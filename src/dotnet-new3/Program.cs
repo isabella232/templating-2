@@ -7,6 +7,7 @@ using System.CommandLine;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using Microsoft.DotNet.Cli;
 using Microsoft.TemplateEngine.Abstractions;
 using Microsoft.TemplateEngine.Abstractions.TemplatePackage;
 using Microsoft.TemplateEngine.Cli;
@@ -25,6 +26,16 @@ namespace Dotnet_new3
 
         public static int Main(string[] args)
         {
+            if (args.FirstOrDefault() == "complete")
+            {
+                return CompleteCommand.Run(args);
+            }
+
+            return CreateNewCommand(args).Invoke(args);
+        }
+
+        public static Command CreateNewCommand(string[] args)
+        {
             bool debugTelemetry = args.Any(x => string.Equals(x, "--debug:emit-telemetry", StringComparison.OrdinalIgnoreCase));
             bool disableSdkTemplates = args.Any(x => string.Equals(x, "--debug:disable-sdk-templates", StringComparison.OrdinalIgnoreCase));
 
@@ -32,7 +43,7 @@ namespace Dotnet_new3
 
             var callbacks = new New3Callbacks();
             var command = New3Command.CreateCommand(CommandName, host, new TelemetryLogger(null, debugTelemetry), callbacks);
-            return command.Invoke(args);
+            return command;
         }
 
         private static DefaultTemplateEngineHost CreateHost(bool disableSdkTemplates)
