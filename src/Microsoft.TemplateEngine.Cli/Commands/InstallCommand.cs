@@ -43,6 +43,14 @@ namespace Microsoft.TemplateEngine.Cli.Commands
 
         protected override Task<NewCommandStatus> ExecuteAsync(InstallCommandArgs<T> args, IEngineEnvironmentSettings environmentSettings, InvocationContext context)
         {
+            if (CommandType.IsNew(typeof(T)))
+            {
+                if (InstallCommandArgs<Legacy>.IsAnyOptionUsed(args.ParseResult))
+                {
+                    return Task.FromResult(NewCommandStatus.InvalidParamValues);
+                }
+            }
+
             using TemplatePackageManager templatePackageManager = new TemplatePackageManager(environmentSettings);
             TemplateInformationCoordinator templateInformationCoordinator = new TemplateInformationCoordinator(
                 environmentSettings,
@@ -105,6 +113,22 @@ namespace Microsoft.TemplateEngine.Cli.Commands
             command.AddArgument(NameArgument);
             command.AddOption(InteractiveOption);
             command.AddOption(AddSourceOption);
+        }
+
+        internal static bool IsAnyOptionUsed(ParseResult parseResult)
+        {
+            if (parseResult.HasOption(InteractiveOption))
+            {
+                Reporter.Error.WriteLine($"{AddSourceOption.Name} used in wrong position.");
+                return true;
+            }
+            if (parseResult.HasOption(AddSourceOption))
+            {
+                Reporter.Error.WriteLine($"{AddSourceOption.Name} used in wrong position.");
+                return true;
+            }
+
+            return false;
         }
     }
 }
