@@ -193,7 +193,7 @@ namespace Microsoft.TemplateEngine.Cli
         /// Install the template package(s) flow (--install, -i).
         /// </summary>
 #pragma warning disable SA1202 // Elements should be ordered by access
-        internal async Task<NewCommandStatus> EnterInstallFlowAsync(InstallCommandArgs args, CancellationToken cancellationToken)
+        internal async Task<NewCommandStatus> EnterInstallFlowAsync<T>(InstallCommandArgs<T> args, CancellationToken cancellationToken)
 #pragma warning restore SA1202 // Elements should be ordered by access
         {
             _ = args ?? throw new ArgumentNullException(nameof(args));

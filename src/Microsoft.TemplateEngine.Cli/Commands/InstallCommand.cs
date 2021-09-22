@@ -14,30 +14,34 @@ using Microsoft.TemplateEngine.Edge.Template;
 
 namespace Microsoft.TemplateEngine.Cli.Commands
 {
-    internal class InstallCommand : BaseCommand<InstallCommandArgs>
+    internal class CommandType
     {
-        internal InstallCommand(ITemplateEngineHost host, ITelemetryLogger logger, NewCommandCallbacks callbacks, string commandName)
-            : base(host, logger, callbacks, commandName)
+        public static bool IsNew(Type type) => type == typeof(New);
+
+        public static bool IsLegacy(Type type) => type == typeof(Legacy);
+    }
+
+    internal class Legacy : CommandType
+    {
+    }
+
+    internal class New : CommandType
+    {
+    }
+
+    internal class InstallCommand<T> : BaseCommand<InstallCommandArgs<T>> where T : CommandType
+    {
+        internal InstallCommand(ITemplateEngineHost host, ITelemetryLogger logger, NewCommandCallbacks callbacks)
+            : base(host, logger, callbacks, CommandType.IsNew(typeof(T)) ? "install" : "--install")
         {
+            if (CommandType.IsLegacy(typeof(T)))
+            {
+                IsHidden = true;
+                AddAlias("-i");
+            }
         }
 
-        internal static InstallCommand GetCommand(ITemplateEngineHost host, ITelemetryLogger logger, NewCommandCallbacks callbacks)
-        {
-            InstallCommand command = new InstallCommand(host, logger, callbacks, "install");
-            InstallCommandArgs.AddToCommand(command);
-            return command;
-        }
-
-        internal static InstallCommand GetLegacyCommand(ITemplateEngineHost host, ITelemetryLogger logger, NewCommandCallbacks callbacks)
-        {
-            InstallCommand command = new InstallCommand(host, logger, callbacks, "--install");
-            command.IsHidden = true;
-            command.AddAlias("-i");
-            InstallCommandArgs.AddToCommand(command, legacy: true);
-            return command;
-        }
-
-        protected override Task<NewCommandStatus> ExecuteAsync(InstallCommandArgs args, IEngineEnvironmentSettings environmentSettings, InvocationContext context)
+        protected override Task<NewCommandStatus> ExecuteAsync(InstallCommandArgs<T> args, IEngineEnvironmentSettings environmentSettings, InvocationContext context)
         {
             using TemplatePackageManager templatePackageManager = new TemplatePackageManager(environmentSettings);
             TemplateInformationCoordinator templateInformationCoordinator = new TemplateInformationCoordinator(
@@ -58,28 +62,16 @@ namespace Microsoft.TemplateEngine.Cli.Commands
             return templatePackageCoordinator.EnterInstallFlowAsync(args, context.GetCancellationToken());
         }
 
-        protected override InstallCommandArgs ParseContext(ParseResult parseResult)
+        protected override InstallCommandArgs<T> ParseContext(ParseResult parseResult)
         {
-            return new InstallCommandArgs(parseResult, IsLegacyCommand());
-        }
-
-        private bool IsLegacyCommand()
-        {
-           return this.Name == "--install";
+            return new InstallCommandArgs<T>(parseResult);
         }
     }
 
-    internal class InstallCommandArgs : GlobalArgs
+    internal class InstallCommandArgs<T> : GlobalArgs
     {
-        public InstallCommandArgs(ParseResult parseResult, bool legacy = false) : base(parseResult)
+        public InstallCommandArgs(ParseResult parseResult) : base(parseResult)
         {
-            if (legacy)
-            {
-                TemplatePackages = parseResult.ValueForArgument(Legacy.NameArgument) ?? throw new Exception("This shouldn't happen, we set ArgumentArity(1)...");
-                Interactive = parseResult.ValueForOption(Legacy.InteractiveOption);
-                AdditionalSources = parseResult.ValueForOption(Legacy.AddSourceOption);
-                return;
-            }
             TemplatePackages = parseResult.ValueForArgument(NameArgument) ?? throw new Exception("This shouldn't happen, we set ArgumentArity(1)...");
             Interactive = parseResult.ValueForOption(InteractiveOption);
             AdditionalSources = parseResult.ValueForOption(AddSourceOption);
@@ -108,47 +100,11 @@ namespace Microsoft.TemplateEngine.Cli.Commands
             AllowMultipleArgumentsPerToken = true,
         };
 
-        internal static void AddLegacyOptionsToCommand(Command command)
-        {
-            command.AddOption(Legacy.InteractiveOption);
-            command.AddOption(Legacy.AddSourceOption);
-        }
-
         internal static void AddToCommand(Command command, bool legacy = false)
         {
-            if (legacy)
-            {
-                command.AddArgument(Legacy.NameArgument);
-                AddLegacyOptionsToCommand(command);
-                return;
-            }
-
             command.AddArgument(NameArgument);
             command.AddOption(InteractiveOption);
             command.AddOption(AddSourceOption);
-        }
-
-        private static class Legacy
-        {
-            internal static Argument<IReadOnlyList<string>> NameArgument { get; } = new("name")
-            {
-                Description = "Name of NuGet package or folder.",
-                Arity = new ArgumentArity(1, 99),
-                IsHidden = true
-            };
-
-            internal static Option<bool> InteractiveOption { get; } = new("--interactive")
-            {
-                Description = "When downloading enable NuGet interactive.",
-                IsHidden = true,
-            };
-
-            internal static Option<IReadOnlyList<string>> AddSourceOption { get; } = new(new[] { "--add-source" })
-            {
-                Description = "Add NuGet source when looking for package.",
-                AllowMultipleArgumentsPerToken = true,
-                IsHidden = true,
-            };
         }
     }
 }

@@ -39,7 +39,7 @@ namespace Microsoft.TemplateEngine.Cli.Commands
         {
             command.AddArgument(ShortNameArgument);
             command.AddArgument(RemainingArguments);
-            InstallCommandArgs.AddLegacyOptionsToCommand(command);
+            InstallCommandArgs<Legacy>.AddToCommand(command);
             command.AddOption(HelpOption);
         }
     }
